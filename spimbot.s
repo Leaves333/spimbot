@@ -61,6 +61,7 @@ main:
         sw $t2, VELOCITY
 
         # YOUR CODE GOES HERE!!!!!!
+	jal move
 
 
 rest:
