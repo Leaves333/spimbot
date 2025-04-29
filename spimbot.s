@@ -66,6 +66,73 @@ main:
 rest:
         j       rest
 
+# ======================== Solve Puzzle ================================		
+
+solve_puzzle:
+	sub $sp, $sp, 12
+	sw $ra, 0($sp)
+	sw $s0, 4($sp)				# s0 = current_feedback
+	sw $s1, 8($sp)				# s1 = i 
+
+	li $s0, 0
+	sw $0, REQUEST_PUZZLE
+	sw $a0, CURRENT_PUZZLE
+	li $s1, 0
+
+for_loop_puzzle:
+	bge $s1, 6, exit_loop
+
+	move $a0, $s0
+	la $a1, state
+	jal build_state
+
+	la $t0, feedbacks
+	mul $t1, $s1, 16
+	add $t0, $t0, $t1
+	sw $t0, PUZZLE_FEEDBACK
+
+	la $a0, state
+	la $a1, words
+	jal find_matching_word
+	sw $v0, SUBMIT_SOLUTION
+
+	lb $t0, feedback_received 
+while_puzzle:
+	bne $t0, 0, exit_while_puzzle
+	lb $t0, feedback_received
+	j while_puzzle
+
+exit_while_puzzle:
+	sb $0, feedback_received
+
+	la $t0, feedbacks
+	mul $t1, $s1, 16
+	add $t0, $t0, $t1
+	move $a0, $t0
+	jal is_solved
+	beq $v0, 1, exit_loop
+
+	la $t0, feedbacks
+	mul $t1, $s1, 16
+	add $t0, $t0, $t1
+	sw $s0, 12($t0)
+	
+	la $t0, feedbacks
+	mul $t1, $s1, 16
+	add $t0, $t0, $t1
+	move $s0, $t0
+
+	add $s1, $s1, 1
+	j for_loop_puzzle
+
+exit_loop:
+	lw $ra, 0($sp)
+	lw $s0, 4($sp)				# s0 = current_feedback
+	lw $s1, 8($sp)				# s1 = i
+	add $sp, $sp, 12
+	jr $ra
+
+
 # ======================== kernel code ================================
 .kdata
 chunkIH:    .space 40
