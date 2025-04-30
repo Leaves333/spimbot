@@ -46,26 +46,112 @@ has_bonked: .byte 0
 
 .text
 main:
-        # enable interrupts
-        li      $t4     1
-        or      $t4     $t4     TIMER_INT_MASK
-        or      $t4,    $t4,    BONK_INT_MASK             # enable bonk interrupt
-        or      $t4,    $t4,    1 # global enable
-        mtc0    $t4     $12
 
-        li $t1, 0
-        sw $t1, ANGLE
-        li $t1, 1
-        sw $t1, ANGLE_CONTROL
-        li $t2, 0
-        sw $t2, VELOCITY
+    # enable interrupts
+    li      $t4     1
+    or      $t4     $t4     TIMER_INT_MASK
+    or      $t4,    $t4,    BONK_INT_MASK             # enable bonk interrupt
+    or      $t4,    $t4,    1 # global enable
+    mtc0    $t4     $12
 
-        # YOUR CODE GOES HERE!!!!!!
-	jal move
+    li $t1, 0
+    sw $t1, ANGLE
+    li $t1, 1
+    sw $t1, ANGLE_CONTROL
+    li $t2, 0
+    sw $t2, VELOCITY
 
+    # YOUR CODE GOES HERE!!!!!!
+    jal move_up
 
 rest:
         j       rest
+
+# movement code
+move_up:
+    # start moving
+    li  $t0, 270
+    sw  $t0, ANGLE
+    li  $t0, 1
+    sw  $t0, ANGLE_CONTROL
+    li  $t0, 10
+    sw  $t0, VELOCITY
+
+    # sleep until done
+    lw  $t1, BOT_Y
+    sub $t1, 8
+move_up_loop:
+    lw  $t2, BOT_Y
+    bgt $t2, $t1, move_up_loop
+
+    # stop moving
+    li  $t0, 0
+    sw  $t0, VELOCITY
+    jr  $ra
+
+move_down:
+    # start moving
+    li  $t0, 90
+    sw  $t0, ANGLE
+    li  $t0, 1
+    sw  $t0, ANGLE_CONTROL
+    li  $t0, 10
+    sw  $t0, VELOCITY
+
+    # sleep until done
+    lw  $t1, BOT_Y
+    add $t1, 8
+move_down_loop:
+    lw  $t2, BOT_Y
+    blt $t2, $t1, move_down_loop
+
+    # stop moving
+    li  $t0, 0
+    sw  $t0, VELOCITY
+    jr  $ra
+
+move_right:
+    # start moving
+    li  $t0, 0
+    sw  $t0, ANGLE
+    li  $t0, 1
+    sw  $t0, ANGLE_CONTROL
+    li  $t0, 10
+    sw  $t0, VELOCITY
+
+    # sleep until done
+    lw  $t1, BOT_X
+    add $t1, 8
+move_right_loop:
+    lw  $t2, BOT_X
+    blt $t2, $t1, move_right_loop
+
+    # stop moving
+    li  $t0, 0
+    sw  $t0, VELOCITY
+    jr  $ra
+
+move_left:
+    # start moving
+    li  $t0, 180
+    sw  $t0, ANGLE
+    li  $t0, 1
+    sw  $t0, ANGLE_CONTROL
+    li  $t0, 10
+    sw  $t0, VELOCITY
+
+    # sleep until done
+    lw  $t1, BOT_X
+    sub $t1, 8
+move_left_loop:
+    lw  $t2, BOT_X
+    bgt $t2, $t1, move_left_loop
+
+    # stop moving
+    li  $t0, 0
+    sw  $t0, VELOCITY
+    jr  $ra
+
 
 # ======================== Solve Puzzle ================================		
 
