@@ -64,8 +64,28 @@ main:
     # YOUR CODE GOES HERE!!!!!!
     jal move_up
 
-rest:
-        j       rest
+    # master plan to just qualify
+    # get list of all the slabs
+    # iterate through them one by one pushing them to the other side
+
+    sw  $s0, 0                  # s0 holds the current slab we're trying to push
+main_loop:
+
+    # load information about slabs
+
+    # check if slab is on the right side already
+    # if this is the case, we don't need to push this slab
+
+    # check if slab is locked
+    # if so, while we don't have enough energy, solve puzzles
+    # unlock slab
+
+    # push slab to other side
+    # how do i implement this?
+
+    add $s0, $s0, 1             # increment s0 to try and push the next slab
+    # TODO: remember to check if s0 is greater than the length !!
+    j   main_loop
 
 # movement code
 move_up:
