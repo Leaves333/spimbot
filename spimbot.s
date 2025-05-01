@@ -41,6 +41,16 @@ GET_ENERGY	 	= 0xffff2014
 
 .data
 
+# // Stuff to put into the data segment
+# struct wordle_feedback_t feedbacks[6];
+# wordle_state_t state;
+# char feedback_received = 0;  // guess_received: .byte 0
+
+feedbacks: .space 96            # 6 * 16 bytes
+state: .space 100               # 100 bytes
+slab_info: .space 84            # 84 byte struct to store slab_info_t
+feedback_recieved: .byte 0
+
 # If you want, you can use the following to detect if a bonk has happened.
 has_bonked: .byte 0
 
@@ -68,10 +78,21 @@ main:
     # get list of all the slabs
     # iterate through them one by one pushing them to the other side
 
-    sw  $s0, 0                  # s0 holds the current slab we're trying to push
+    li  $s0, 0                  # s0 holds the current slab we're trying to push
 main_loop:
 
     # load information about slabs
+    la  $t0, slab_info
+    sw  $t0, GET_SLABS
+
+    add $t0, $t0, 4             # skip over length
+    mul $t1, $s0, 4             # find address of slab_info.metadata[i]
+    add $t0, $t0, $t1
+
+    # print some debug info?
+    lbu $a0, 0($t0)             # load pos_row into a0
+    lbu $a1, 1($t0)             # load pos_col into a1
+    jal print_xy
 
     # check if slab is on the right side already
     # if this is the case, we don't need to push this slab
@@ -83,11 +104,16 @@ main_loop:
     # push slab to other side
     # how do i implement this?
 
-    add $s0, $s0, 1             # increment s0 to try and push the next slab
-    # TODO: remember to check if s0 is greater than the length !!
-    j   main_loop
+    add $s0, $s0, 1             # increment s0 to check the next slab next loop
+    la  $t0, slab_info          # load slab_info.length into t0
+    lw  $t0, 0($t0)
 
-# movement code
+    blt $s0, $t0, main_loop     # loop if s0 < len
+
+rest:
+    j   rest
+
+# ================ movement code ================
 move_up:
     # start moving
     li  $t0, 270
