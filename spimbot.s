@@ -73,7 +73,6 @@ main:
     sw $t2, VELOCITY
 
     # YOUR CODE GOES HERE!!!!!!
-    jal move_up
 
     # master plan to just qualify
     # get list of all the slabs
@@ -136,7 +135,47 @@ main_loop_push_slab:
     # push slab to other side
     # how do i implement this?
 
+    # while botx > 18, move left
+push_slab_move_left_loop:
+    lw  $t0, BOT_X
+    blt $t0, 24, push_slab_move_left_loop_end
+    jal move_left
+    j   push_slab_move_left_loop
+push_slab_move_left_loop_end:
+
+    # move to the same y as the slab
+    lw  $t0, BOT_Y              # load our y position into t0
+    lbu $t1, 0($s2)             # load the slab's y position into t1
+    mul $t1, $t1, 8             # convert slab's coords into pixels
+
+    move $a0, $t0
+    move $a1, $t1
+    jal print_xy
+
+    sub $t2, $t1, $t0           # s2 = slab_y - bot_y
+    bgt $t2, 8, push_slab_move_down_loop
+    blt $t2, -8, push_slab_move_up_loop
+    j   push_slab_move_right_loop
+
+push_slab_move_up_loop:
+    lw  $t0, BOT_Y              # load our y position into t0
+    lbu $t1, 0($s2)             # load the slab's y position into t1
+    mul $t1, $t1, 8             # convert slab's coords into pixels
+    sub $t2, $t1, $t0           # s2 = slab_y - bot_y
+    bgt $t2, -4, push_slab_move_right_loop
+
+    jal move_up
+    j   push_slab_move_up_loop
+
+push_slab_move_down_loop:
+    jal move_down
+    j   push_slab_move_down_loop
+
+push_slab_move_right_loop:
+    jal move_right
+
 main_loop_end:
+    j   rest
 
     add $s0, $s0, 1             # increment s0 to check the next slab next loop
     la  $t0, slab_info          # load slab_info.length into t0
