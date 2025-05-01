@@ -168,11 +168,26 @@ push_slab_move_up_loop:
     j   push_slab_move_up_loop
 
 push_slab_move_down_loop:
+    lw  $t0, BOT_Y              # load our y position into t0
+    lbu $t1, 0($s2)             # load the slab's y position into t1
+    mul $t1, $t1, 8             # convert slab's coords into pixels
+    sub $t2, $t1, $t0           # s2 = slab_y - bot_y
+    blt $t2, 4, push_slab_move_right_loop
+
     jal move_down
     j   push_slab_move_down_loop
 
+    li  $s3, 20
 push_slab_move_right_loop:
+
+    move $a0, $s3
+    move $a1, $s3
+    jal print_xy
+
     jal move_right
+
+    sub $s3, $s3, 1
+    bgt $s3, 0, push_slab_move_right_loop
 
 main_loop_end:
     j   rest
