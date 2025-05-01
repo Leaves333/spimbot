@@ -49,7 +49,7 @@ GET_ENERGY	 	= 0xffff2014
 feedbacks: .space 96            # 6 * 16 bytes
 state: .space 100               # 100 bytes
 slab_info: .space 84            # 84 byte struct to store slab_info_t
-feedback_recieved: .byte 0
+feedback_received: .byte 0
 
 # If you want, you can use the following to detect if a bonk has happened.
 has_bonked: .byte 0
@@ -60,7 +60,8 @@ main:
     # enable interrupts
     li      $t4     1
     or      $t4     $t4     TIMER_INT_MASK
-    or      $t4,    $t4,    BONK_INT_MASK             # enable bonk interrupt
+    or      $t4,    $t4,    BONK_INT_MASK               # enable bonk interrupt
+    or      $t4,    $t4,    FEEDBACK_INT_MASK           # enable feedback interrupt
     or      $t4,    $t4,    1 # global enable
     mtc0    $t4     $12
 
@@ -79,30 +80,63 @@ main:
     # iterate through them one by one pushing them to the other side
 
     li  $s0, 0                  # s0 holds the current slab we're trying to push
+    li  $s1, 0                  # s1 holds the index of the next puzzle to solve
 main_loop:
 
     # load information about slabs
-    la  $t0, slab_info
-    sw  $t0, GET_SLABS
+    la  $s2, slab_info          # s2 stores address of slab_info
+    sw  $s2, GET_SLABS
 
-    add $t0, $t0, 4             # skip over length
+    add $s2, $s2, 4             # skip over length
     mul $t1, $s0, 4             # find address of slab_info.metadata[i]
-    add $t0, $t0, $t1
+    add $s2, $s2, $t1           # s2 is now address of slab_info.metadata[i]
 
     # print some debug info?
-    lbu $a0, 0($t0)             # load pos_row into a0
-    lbu $a1, 1($t0)             # load pos_col into a1
+    lbu $a0, 0($s2)             # load pos_row into a0
+    lbu $a1, 1($s2)             # load pos_col into a1
     jal print_xy
 
     # check if slab is on the right side already
     # if this is the case, we don't need to push this slab
+    lbu $t1, 0($s2)
+    bgt $t1, 20, main_loop_end
 
     # check if slab is locked
     # if so, while we don't have enough energy, solve puzzles
     # unlock slab
+    lbu $t1, 2($s2)             # loads owner + locked into t1
+    and $t2, $t1, 1             # t2 stores owner
+    and $t3, $t1, 2             # t3 stores locked
+
+    beq $t3, 0, main_loop_push_slab     # if the slab is not locked, don't need to unlock
+    beq $t2, 0, main_loop_push_slab     # if we own it already, don't need to unlock
+
+    # check if we have enough energy
+get_energy_loop:
+    lw  $t4, GET_ENERGY                 # load the current amount of energy we have into t4
+    bgt $t4, 100, get_energy_loop_end   # stop solving puzzles if more than 100 energy
+
+    # print debug info
+    move $a0, $t4
+    move $a1, $t4
+    jal print_xy
+
+    move $a0, $s1               # call solve_puzzle(s1)
+    jal solve_puzzle
+    add $s1, $s1, 1             # increment s1 to the next puzzle
+
+    j   get_energy_loop
+
+get_energy_loop_end:
+
+    # unlock the slab
+
+main_loop_push_slab:
 
     # push slab to other side
     # how do i implement this?
+
+main_loop_end:
 
     add $s0, $s0, 1             # increment s0 to check the next slab next loop
     la  $t0, slab_info          # load slab_info.length into t0
@@ -202,69 +236,79 @@ move_left_loop:
 # ======================== Solve Puzzle ================================		
 
 solve_puzzle:
-	sub $sp, $sp, 12
-	sw $ra, 0($sp)
-	sw $s0, 4($sp)				# s0 = current_feedback
-	sw $s1, 8($sp)				# s1 = i 
 
-	li $s0, 0
-	sw $0, REQUEST_PUZZLE
-	sw $a0, CURRENT_PUZZLE
-	li $s1, 0
+    # // Stuff to put into the data segment
+    # struct wordle_feedback_t feedbacks[6];
+    # wordle_state_t state;                             
+    # char feedback_received = 0;  // guess_received: .byte 0
 
-for_loop_puzzle:
-	bge $s1, 6, exit_loop
+    # allocate stack
+    sub $sp, $sp, 20
+    sw  $ra, 0($sp)
+    sw  $a0, 4($sp)
+    sw  $s0, 8($sp)
+    sw  $s1, 12($sp)
+    sw  $s2, 16($sp)
 
-	move $a0, $s0
-	la $a1, state
-	jal build_state
+    li  $s0, 0                  # s0 = current_feedback = NULL
 
-	la $t0, feedbacks
-	mul $t1, $s1, 16
-	add $t0, $t0, $t1
-	sw $t0, PUZZLE_FEEDBACK
+    sw  $t0, REQUEST_PUZZLE     # request a puzzle
+    move $t0, $a0
+    sw  $t0, CURRENT_PUZZLE     # set current puzzle to be the one this func is solving
 
-	la $a0, state
-	la $a1, words
-	jal find_matching_word
-	sw $v0, SUBMIT_SOLUTION
+    # loop 6 times to try to solve
+    li  $s1, 0                  # s1 is i
+sp_loop:
 
-	lb $t0, feedback_received 
-while_puzzle:
-	bne $t0, 0, exit_while_puzzle
-	lb $t0, feedback_received
-	j while_puzzle
+    # build_state(current_feedback, &state);
+    move $a0, $s0
+    la  $a1, state
+    jal build_state
 
-exit_while_puzzle:
-	sb $0, feedback_received
+    # char *guess = find_matching_word(&state, words);
+    la  $a0, state
+    la  $a1, words
+    jal find_matching_word
 
-	la $t0, feedbacks
-	mul $t1, $s1, 16
-	add $t0, $t0, $t1
-	move $a0, $t0
-	jal is_solved
-	beq $v0, 1, exit_loop
+    # *PUZZLE_FEEDBACK = &feedbacks[i]; // put each feedback in a different place
+    la  $s2, feedbacks
+    mul $t0, $s1, 16
+    add $s2, $s2, $t0               # s2 = &feedbacks[i]
+    sw  $s2, PUZZLE_FEEDBACK        # *PUZZLE_FEEDBACK = &feedbacks[i]
 
-	la $t0, feedbacks
-	mul $t1, $s1, 16
-	add $t0, $t0, $t1
-	sw $s0, 12($t0)
-	
-	la $t0, feedbacks
-	mul $t1, $s1, 16
-	add $t0, $t0, $t1
-	move $s0, $t0
+    sw  $v0, SUBMIT_SOLUTION        # *SUBMIT_SOLUTION = guess
 
-	add $s1, $s1, 1
-	j for_loop_puzzle
+    # while (feedback_received == 0)
+sp_wait_for_feedback:
+    lb  $t0, feedback_received
+    beq $t0, 0, sp_wait_for_feedback
 
-exit_loop:
-	lw $ra, 0($sp)
-	lw $s0, 4($sp)				# s0 = current_feedback
-	lw $s1, 8($sp)				# s1 = i
-	add $sp, $sp, 12
-	jr $ra
+    # feedback_received = 0;  // reset wait variable
+    li  $t0, 0
+    sw  $t0, feedback_received
 
+    # if (is_solved(&feedbacks[i])) {  // provided in part2.s (checks if all 5 feedback are MATCH)
+    move $a0, $s2
+    jal is_solved
+    bne $v0, 0, sp_return           # return
+
+    sw  $s0, 12($s2)                # feedbacks[i].next = current_feedback
+    move $s0, $s2                   # current_feedback = &feedbacks[i];			 
+
+    add $s1, $s1, 1                 # i++
+    blt $s1, 6, sp_loop
+
+sp_return:
+
+    # fix stack
+    lw  $ra, 0($sp)
+    lw  $a0, 4($sp)
+    lw  $s0, 8($sp)
+    lw  $s1, 12($sp)
+    sw  $s2, 16($sp)
+    add $sp, $sp, 20
+
+    jr  $ra
 
 # ======================== kernel code ================================
 .kdata
@@ -311,6 +355,9 @@ interrupt_dispatch:                 # Interrupt:
     and     $a0, $k0, TIMER_INT_MASK    # is there a timer interrupt?
     bne     $a0, 0, timer_interrupt
 
+    and     $a0, $k0, FEEDBACK_INT_MASK # is there a feedback interrupt?
+    bne     $a0, 0, feedback_interrupt
+
     li      $v0, PRINT_STRING       # Unhandled interrupt types
     la      $a0, unhandled_str
     syscall
@@ -324,6 +371,12 @@ bonk_interrupt:
 timer_interrupt:
     sw      $0, TIMER_ACK
     #Fill in your timer interrupt code here
+    j       interrupt_dispatch      # see if other interrupts are waiting
+
+feedback_interrupt:
+    sw      $0, FEEDBACK_ACK        # acknowledge the interrupt
+    li      $t0, 1
+    sw      $t0, feedback_received  # feedback_received = 1;
     j       interrupt_dispatch      # see if other interrupts are waiting
 
 non_intrpt:                         # was some non-interrupt
