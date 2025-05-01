@@ -98,12 +98,11 @@ main_loop:
 
     # check if slab is on the right side already
     # if this is the case, we don't need to push this slab
-    lbu $t1, 0($s2)
+    lbu $t1, 1($s2)
     bgt $t1, 20, main_loop_end
 
     # check if slab is locked
     # if so, while we don't have enough energy, solve puzzles
-    # unlock slab
     lbu $t1, 2($s2)             # loads owner + locked into t1
     and $t2, $t1, 1             # t2 stores owner
     and $t3, $t1, 2             # t3 stores locked
@@ -130,6 +129,7 @@ get_energy_loop:
 get_energy_loop_end:
 
     # unlock the slab
+    sw  $s0, UNLOCK_SLAB
 
 main_loop_push_slab:
 
