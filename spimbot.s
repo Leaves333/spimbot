@@ -186,7 +186,7 @@ push_slab_move_right_loop:
 
     jal move_right
 
-    bgt $s3, 22, push_slab_move_right_loop
+    blt $s3, 22, push_slab_move_right_loop
 
 main_loop_end:
     j   rest
