@@ -172,7 +172,7 @@ push_slab_move_down_loop:
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    blt $t2, 4, push_slab_move_right_loop
+    blt $t2, 4, push_slab_move_right_loop	# when going for a second slab it's not branching here if think
 
     jal move_down
     j   push_slab_move_down_loop
