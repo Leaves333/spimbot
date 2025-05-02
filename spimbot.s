@@ -178,16 +178,15 @@ push_slab_move_down_loop:
     j   push_slab_move_down_loop
 
 push_slab_move_right_loop:
-    li  $s3, 20
+    lw $t0, BOT_X		# load our x position into t0
     
-    move $a0, $s3
-    move $a1, $s3
+    move $a0, $t0
+    move $a1, $t0
     jal print_xy
 
     jal move_right
 
-    sub $s3, $s3, 1
-    bgt $s3, 0, push_slab_move_right_loop
+    bgt $s3, 22, push_slab_move_right_loop
 
 main_loop_end:
     j   rest
