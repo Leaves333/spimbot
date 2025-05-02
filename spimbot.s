@@ -183,7 +183,6 @@ push_slab_move_right_loop:
     blt $s3, 176, push_slab_move_right_loop
 
 main_loop_end:
-    bne $s0, 1, rest
 
     add $s0, $s0, 1             # increment s0 to check the next slab next loop
     la  $t0, slab_info          # load slab_info.length into t0
