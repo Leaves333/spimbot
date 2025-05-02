@@ -177,9 +177,9 @@ push_slab_move_down_loop:
     jal move_down
     j   push_slab_move_down_loop
 
-    li  $s3, 20
 push_slab_move_right_loop:
-
+    li  $s3, 20
+    
     move $a0, $s3
     move $a1, $s3
     jal print_xy
