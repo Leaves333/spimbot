@@ -191,8 +191,6 @@ push_slab_align_move_right_loop:
     sub $t2, $t1, $t0           # s2 = slab_x - bot_x
     bgt $t2, 0, push_slab_align_move_right_loop     # loop while this difference is big
 
-    j   rest
-
     # push the slab up
     jal move_as_up_as_possible
 
