@@ -90,11 +90,6 @@ main_loop:
     mul $t1, $s0, 4             # find address of slab_info.metadata[i]
     add $s2, $s2, $t1           # s2 is now address of slab_info.metadata[i]
 
-    # print some debug info?
-    lbu $a0, 0($s2)             # load pos_row into a0
-    lbu $a1, 1($s2)             # load pos_col into a1
-    jal print_xy
-
     # check if slab is on the right side already
     # if this is the case, we don't need to push this slab
     lbu $t1, 1($s2)
@@ -114,11 +109,6 @@ get_energy_loop:
     lw  $t4, GET_ENERGY                 # load the current amount of energy we have into t4
     bgt $t4, 100, get_energy_loop_end   # stop solving puzzles if more than 100 energy
 
-    # print debug info
-    move $a0, $t4
-    move $a1, $t4
-    jal print_xy
-
     move $a0, $s1               # call solve_puzzle(s1)
     jal solve_puzzle
     add $s1, $s1, 1             # increment s1 to the next puzzle
@@ -135,7 +125,7 @@ main_loop_push_slab:
     # push slab to other side
     # how do i implement this?
 
-    # while botx > 18, move left
+    # first move as left as possible...
 push_slab_move_left_loop:
     lw  $t0, BOT_X
     blt $t0, 24, push_slab_move_left_loop_end
@@ -143,45 +133,46 @@ push_slab_move_left_loop:
     j   push_slab_move_left_loop
 push_slab_move_left_loop_end:
 
-    # move to the same y as the slab
+    # then move to the same y as the slab
     lw  $t0, BOT_Y              # load our y position into t0
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
 
-    move $a0, $t0
-    move $a1, $t1
-    jal print_xy
-
+    # do we need to move up or down?
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
     bgt $t2, 8, push_slab_move_down_loop
     blt $t2, -8, push_slab_move_up_loop
     j   push_slab_move_right_loop
 
+    # move up until our y matches with the slab
 push_slab_move_up_loop:
     lw  $t0, BOT_Y              # load our y position into t0
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    bgt $t2, -4, push_slab_move_right_loop
+    bgt $t2, -4, push_slab_move_right
 
     jal move_up
     j   push_slab_move_up_loop
 
+    # move down until our y matches with the slab
 push_slab_move_down_loop:
     lw  $t0, BOT_Y              # load our y position into t0
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    blt $t2, 4, push_slab_move_right_loop	# when going for a second slab it's not branching here if think
+    blt $t2, 4, push_slab_move_right    # when going for a second slab it's not branching here if think
 
     jal move_down
     j   push_slab_move_down_loop
 
+    # try to push the slab right 30 times
+push_slab_move_right:
     li  $s3, 30
 push_slab_move_right_loop:
     jal move_right
     sub $s3, $s3, 1
-    blt $s3, 0, push_slab_move_right_loop
+    bgt $s3, 0, push_slab_move_right_loop
 
 main_loop_end:
 
