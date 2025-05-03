@@ -126,12 +126,7 @@ main_loop_push_slab:
     # how do i implement this?
 
     # first move as left as possible...
-push_slab_move_left_loop:
-    lw  $t0, BOT_X
-    blt $t0, 24, push_slab_move_left_loop_end
-    jal move_left
-    j   push_slab_move_left_loop
-push_slab_move_left_loop_end:
+    jal move_as_left_as_possible
 
     # then move to the same y as the slab
     lw  $t0, BOT_Y              # load our y position into t0
@@ -184,6 +179,26 @@ main_loop_end:
 
 rest:
     j   rest
+
+# =========== helper functions ===========
+move_as_left_as_possible:
+    sub $sp, $sp, 4
+    sw  $ra, 0($sp)
+
+move_as_left_as_possible_loop:
+    lw  $t0, BOT_X
+    move $a0, $t0
+    jal print_xy
+
+    blt $t0, 24, move_as_left_as_possible_end
+
+    jal move_left
+    j   move_as_left_as_possible_loop
+
+move_as_left_as_possible_end:
+    lw  $ra, 0($sp)
+    add $sp, $sp, 4
+    jr  $ra
 
 # ================ movement code ================
 move_up:
