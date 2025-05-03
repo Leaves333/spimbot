@@ -145,7 +145,7 @@ push_slab_move_up_loop:
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    bgt $t2, -4, push_slab_move_right
+    bgt $t2, -4, push_slab_align
 
     jal move_up
     j   push_slab_move_up_loop
@@ -156,10 +156,36 @@ push_slab_move_down_loop:
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    blt $t2, 4, push_slab_move_right    # when going for a second slab it's not branching here if think
+    blt $t2, 4, push_slab_align
 
     jal move_down
     j   push_slab_move_down_loop
+
+    # put the slab at the right y level for pushing
+push_slab_align:
+
+    # if the slab's y is already good, we don't need to fix it
+    lbu $t1, 0($s2)             # load the slab's y position into t1
+    blt $t1, 5, push_slab_move_right    # already near the top?
+    bgt $t1, 34, push_slab_move_right   # already near the bottom?
+
+    # move below the slab and align x position
+    jal move_down
+    jal move_down
+push_slab_align_move_right_loop:
+    jal move_right
+
+    lw  $t0, BOT_X              # load our x position into t0
+    lbu $t1, 0($s2)             # load the slab's x position into t1
+    mul $t1, $t1, 8             # convert slab position to pixels
+    sub $t2, $t1, $t0           # s2 = slab_x - bot_x
+    bgt $t2, 4, push_slab_align_move_right_loop     # loop while this difference is big
+
+    jal move_down
+    jal move_left
+    jal move_left
+    jal move_up
+    jal move_up
 
     # try to push the slab right 30 times
 push_slab_move_right:
@@ -181,21 +207,35 @@ rest:
     j   rest
 
 # =========== helper functions ===========
+
+# go all the way to the left
 move_as_left_as_possible:
     sub $sp, $sp, 4
     sw  $ra, 0($sp)
 
 move_as_left_as_possible_loop:
     lw  $t0, BOT_X
-    move $a0, $t0
-    jal print_xy
-
-    blt $t0, 24, move_as_left_as_possible_end
-
+    blt $t0, 18, move_as_left_as_possible_end
     jal move_left
     j   move_as_left_as_possible_loop
 
 move_as_left_as_possible_end:
+    lw  $ra, 0($sp)
+    add $sp, $sp, 4
+    jr  $ra
+
+# go all the way up
+move_as_up_as_possible:
+    sub $sp, $sp, 4
+    sw  $ra, 0($sp)
+
+move_as_up_as_possible_loop:
+    lw  $t0, BOT_Y
+    blt $t0, 32, move_as_up_as_possible_end
+    jal move_up
+    j   move_as_up_as_possible_loop
+
+move_as_up_as_possible_end:
     lw  $ra, 0($sp)
     add $sp, $sp, 4
     jr  $ra
