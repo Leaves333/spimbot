@@ -177,10 +177,11 @@ push_slab_move_down_loop:
     jal move_down
     j   push_slab_move_down_loop
 
+    li  $s3, 30
 push_slab_move_right_loop:
-    lw $s3, BOT_X		# load our x position into t0
     jal move_right
-    blt $s3, 176, push_slab_move_right_loop
+    sub $s3, $s3, 1
+    blt $s3, 0, push_slab_move_right_loop
 
 main_loop_end:
 
@@ -204,11 +205,10 @@ move_up:
     sw  $t0, VELOCITY
 
     # sleep until done
-    lw  $t1, BOT_Y
-    sub $t1, 8
+    li  $t1, 2666               # wait long enough to move 8 pixels
 move_up_loop:
-    lw  $t2, BOT_Y
-    bgt $t2, $t1, move_up_loop
+    sub $t1, $t1, 1
+    bgt $t1, 0, move_up_loop
 
     # stop moving
     li  $t0, 0
@@ -225,11 +225,10 @@ move_down:
     sw  $t0, VELOCITY
 
     # sleep until done
-    lw  $t1, BOT_Y
-    add $t1, 8
+    li  $t1, 2666               # wait long enough to move 8 pixels
 move_down_loop:
-    lw  $t2, BOT_Y
-    blt $t2, $t1, move_down_loop
+    sub $t1, $t1, 1
+    bgt $t1, 0, move_down_loop
 
     # stop moving
     li  $t0, 0
@@ -246,11 +245,10 @@ move_right:
     sw  $t0, VELOCITY
 
     # sleep until done
-    lw  $t1, BOT_X
-    add $t1, 8
+    li  $t1, 2666               # wait long enough to move 8 pixels
 move_right_loop:
-    lw  $t2, BOT_X
-    blt $t2, $t1, move_right_loop
+    sub $t1, $t1, 1
+    bgt $t1, 0, move_right_loop
 
     # stop moving
     li  $t0, 0
@@ -267,11 +265,10 @@ move_left:
     sw  $t0, VELOCITY
 
     # sleep until done
-    lw  $t1, BOT_X
-    sub $t1, 8
+    li  $t1, 2666               # wait long enough to move 8 pixels
 move_left_loop:
-    lw  $t2, BOT_X
-    bgt $t2, $t1, move_left_loop
+    sub $t1, $t1, 1
+    bgt $t1, 0, move_left_loop
 
     # stop moving
     li  $t0, 0
