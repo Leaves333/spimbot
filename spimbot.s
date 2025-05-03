@@ -150,7 +150,7 @@ push_slab_move_up_loop:
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    bgt $t2, -4, push_slab_align
+    bgt $t2, -6, push_slab_align
 
     jal move_up
     j   push_slab_move_up_loop
@@ -176,34 +176,51 @@ push_slab_align:
     bgt $t1, 34, push_slab_move_right   # already near the bottom?
 
     # going to push the slab to the right y level:
-    # move below the slab
+    # figure out if we need to push the slab up or down
+    bgt $t1, 20, push_slab_scoot_up     # if y > 20, push down
+push_slab_scoot_down:
     jal move_down
     jal move_down
+    j   push_slab_move_to_slab_x_loop
+push_slab_scoot_up:
+    jal move_up
+    jal move_up
+    j   push_slab_move_to_slab_x_loop
 
     # move right under the slab
-push_slab_align_move_right_loop:
+push_slab_move_to_slab_x_loop:
     jal move_right
     lw  $t0, BOT_X              # load our x position into t0
     lbu $t1, 1($s2)             # load the slab's x position into t1
     mul $t1, $t1, 8             # convert slab position to pixels
 
-
     sub $t2, $t1, $t0           # s2 = slab_x - bot_x
-    bgt $t2, 0, push_slab_align_move_right_loop     # loop while this difference is big
+    bgt $t2, 0, push_slab_move_to_slab_x_loop     # loop while this difference is big
 
-    # push the slab up
+    # push the slab to the edge of the board and reposition to its left
+    lbu $t1, 0($s2)             # load the slab's y position into t1
+    bgt $t1, 20, push_slab_down         # if y > 20, push down
+push_slab_up:
     jal move_as_up_as_possible
-
-    # re-adjust our position to be left of the slab
     jal move_down
     jal move_left
     jal move_left
     jal move_up
     jal move_up
+    j   push_slab_move_right
 
-    # try to push the slab right 30 times
+push_slab_down:
+    jal move_as_down_as_possible
+    jal move_up
+    jal move_left
+    jal move_left
+    jal move_down
+    jal move_down
+    j   push_slab_move_right
+
+    # try to push the slab right 25 times
 push_slab_move_right:
-    li  $s3, 30
+    li  $s3, 25
 push_slab_move_right_loop:
     jal move_right
     sub $s3, $s3, 1
@@ -250,6 +267,22 @@ move_as_up_as_possible_loop:
     j   move_as_up_as_possible_loop
 
 move_as_up_as_possible_end:
+    lw  $ra, 0($sp)
+    add $sp, $sp, 4
+    jr  $ra
+
+# go all the way down
+move_as_down_as_possible:
+    sub $sp, $sp, 4
+    sw  $ra, 0($sp)
+
+move_as_down_as_possible_loop:
+    lw  $t0, BOT_Y
+    bgt $t0, 290, move_as_down_as_possible_end
+    jal move_down
+    j   move_as_down_as_possible_loop
+
+move_as_down_as_possible_end:
     lw  $ra, 0($sp)
     add $sp, $sp, 4
     jr  $ra
