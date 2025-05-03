@@ -90,6 +90,11 @@ main_loop:
     mul $t1, $s0, 4             # find address of slab_info.metadata[i]
     add $s2, $s2, $t1           # s2 is now address of slab_info.metadata[i]
 
+    # print the slab's x and y
+    lbu $a0, 0($s2)
+    lbu $a1, 1($s2)
+    jal print_xy
+
     # check if slab is on the right side already
     # if this is the case, we don't need to push this slab
     lbu $t1, 1($s2)
@@ -156,6 +161,7 @@ push_slab_move_down_loop:
     lbu $t1, 0($s2)             # load the slab's y position into t1
     mul $t1, $t1, 8             # convert slab's coords into pixels
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
+
     blt $t2, 4, push_slab_align
 
     jal move_down
@@ -169,18 +175,28 @@ push_slab_align:
     blt $t1, 5, push_slab_move_right    # already near the top?
     bgt $t1, 34, push_slab_move_right   # already near the bottom?
 
-    # move below the slab and align x position
+    # going to push the slab to the right y level:
+    # move below the slab
     jal move_down
     jal move_down
+
+    # move right under the slab
 push_slab_align_move_right_loop:
     jal move_right
-
     lw  $t0, BOT_X              # load our x position into t0
-    lbu $t1, 0($s2)             # load the slab's x position into t1
+    lbu $t1, 1($s2)             # load the slab's x position into t1
     mul $t1, $t1, 8             # convert slab position to pixels
-    sub $t2, $t1, $t0           # s2 = slab_x - bot_x
-    bgt $t2, 4, push_slab_align_move_right_loop     # loop while this difference is big
 
+
+    sub $t2, $t1, $t0           # s2 = slab_x - bot_x
+    bgt $t2, 0, push_slab_align_move_right_loop     # loop while this difference is big
+
+    j   rest
+
+    # push the slab up
+    jal move_as_up_as_possible
+
+    # re-adjust our position to be left of the slab
     jal move_down
     jal move_left
     jal move_left
@@ -394,7 +410,7 @@ sp_return:
     lw  $a0, 4($sp)
     lw  $s0, 8($sp)
     lw  $s1, 12($sp)
-    sw  $s2, 16($sp)
+    lw  $s2, 16($sp)
     add $sp, $sp, 20
 
     jr  $ra
