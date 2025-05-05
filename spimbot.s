@@ -49,6 +49,7 @@ GET_ENERGY	 	= 0xffff2014
 feedbacks: .space 96            # 6 * 16 bytes
 state: .space 100               # 100 bytes
 slab_info: .space 84            # 84 byte struct to store slab_info_t
+last_word_checked: .word 0
 feedback_received: .byte 0
 
 # If you want, you can use the following to detect if a bonk has happened.
@@ -89,11 +90,6 @@ main_loop:
     add $s2, $s2, 4             # skip over length
     mul $t1, $s0, 4             # find address of slab_info.metadata[i]
     add $s2, $s2, $t1           # s2 is now address of slab_info.metadata[i]
-
-    # print the slab's x and y
-    lbu $a0, 0($s2)
-    lbu $a1, 1($s2)
-    jal print_xy
 
     # check if slab is on the right side already
     # if this is the case, we don't need to push this slab
@@ -379,6 +375,10 @@ solve_puzzle:
     # struct wordle_feedback_t feedbacks[6];
     # wordle_state_t state;                             
     # char feedback_received = 0;  // guess_received: .byte 0
+
+    # set last_word_checked to 0
+    li  $t0, 0
+    sw  $t0, last_word_checked
 
     # allocate stack
     sub $sp, $sp, 20
@@ -697,7 +697,11 @@ find_matching_word:
     
     move    $s0     $a0             # state
     move    $s1     $a1             # words
-    li      $s2     0               # i = 0
+
+    la      $s2     last_word_checked
+    lw      $s2     0($s2)          # i = last_word_checked
+    mul     $t0     $s2     6
+    add     $s1     $s1     $t0     # address of words[last_word_checked]
 
     la      $s3     g_num_words
     lw      $s3     0($s3)          # g_num_words
@@ -716,6 +720,8 @@ _loop:
     and     $s4     $s4     $v0     # letters_allowed & letters_required
     
     move    $v0     $s1
+    sw      $s2     last_word_checked   # update last_word_checked
+
     bne     $s4     $zero   _return # return candidate
     
     add     $s2     $s2     1       # ++i
