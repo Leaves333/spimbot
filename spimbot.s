@@ -277,7 +277,6 @@ main_loop_end:
     lw  $t0, 0($t0)
 
     blt $s0, $t0, main_loop     # loop if s0 < len
-    j   rest
     sub $s0, $s0, $t0
     j   main_loop
 
