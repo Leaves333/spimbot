@@ -80,6 +80,52 @@ main:
     # iterate through them one by one pushing them to the other side
 
     li  $s0, 0                  # s0 holds the current slab we're trying to push
+unlocking_loop:
+    
+    # load information about slabs
+    la  $s2, slab_info          # s2 stores address of slab_info
+    sw  $s2, GET_SLABS
+
+    add $s2, $s2, 4             # skip over length
+    mul $t1, $s0, 4             # find address of slab_info.metadata[i]
+    add $s2, $s2, $t1           # s2 is now address of slab_info.metadata[i]
+
+    # check if slab is on the right side already
+    # if this is the case, we don't need to push this slab
+    lbu $t1, 1($s2)
+    bgt $t1, 20, unlocking_loop_end
+
+    # check if slab is locked
+    # if so, while we don't have enough energy, solve puzzles
+    lbu $t1, 2($s2)             # loads owner + locked into t1
+    and $t2, $t1, 1             # t2 stores owner
+    and $t3, $t1, 2             # t3 stores locked
+
+    beq $t3, 0, unlocking_loop_end      # if the slab is not locked, don't need to unlock
+    beq $t2, 0, unlocking_loop_end      # if we own it already, don't need to unlock
+
+    # check if we have enough energy
+unlocking_get_energy_loop:
+    lw  $t4, GET_ENERGY                 # load the current amount of energy we have into t4
+    bgt $t4, 100, unlocking_get_energy_loop_end   # stop solving puzzles if more than 100 energy
+
+    move $a0, $s1               # call solve_puzzle(s1)
+    jal solve_puzzle
+    add $s1, $s1, 1             # increment s1 to the next puzzle
+
+    j   unlocking_get_energy_loop
+
+unlocking_get_energy_loop_end:
+    # unlock the slab
+    sw  $s0, UNLOCK_SLAB
+
+unlocking_loop_end:
+    add $s0, $s0, 1             # increment s0 to check the next slab next loop
+    la  $t0, slab_info          # load slab_info.length into t0
+    lw  $t0, 0($t0)
+    blt $s0, $t0, unlocking_loop    # loop if s0 < len
+
+    li  $s0, 0                  # s0 holds the current slab we're trying to push
     li  $s1, 0                  # s1 holds the index of the next puzzle to solve
 main_loop:
 
@@ -136,9 +182,10 @@ main_loop_push_slab:
 
     # do we need to move up or down?
     sub $t2, $t1, $t0           # s2 = slab_y - bot_y
-    bgt $t2, 8, push_slab_move_down_loop
-    blt $t2, -8, push_slab_move_up_loop
-    j   push_slab_move_right_loop
+
+    bgt $t2, 2, push_slab_move_down_loop
+    blt $t2, -2, push_slab_move_up_loop
+    j   push_slab_move_right
 
     # move up until our y matches with the slab
 push_slab_move_up_loop:
@@ -173,7 +220,8 @@ push_slab_align:
 
     # going to push the slab to the right y level:
     # figure out if we need to push the slab up or down
-    bgt $t1, 20, push_slab_scoot_up     # if y > 20, push down
+
+    # bgt $t1, 20, push_slab_scoot_up     # if y > 20, push down
 push_slab_scoot_down:
     jal move_down
     jal move_down
@@ -195,7 +243,7 @@ push_slab_move_to_slab_x_loop:
 
     # push the slab to the edge of the board and reposition to its left
     lbu $t1, 0($s2)             # load the slab's y position into t1
-    bgt $t1, 20, push_slab_down         # if y > 20, push down
+    # bgt $t1, 20, push_slab_down         # if y > 20, push down
 push_slab_up:
     jal move_as_up_as_possible
     jal move_down
@@ -229,6 +277,7 @@ main_loop_end:
     lw  $t0, 0($t0)
 
     blt $s0, $t0, main_loop     # loop if s0 < len
+    j   rest
     sub $s0, $s0, $t0
     j   main_loop
 
