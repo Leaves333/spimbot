@@ -1,1 +1,33 @@
-<Explain your team's strategy, implementation, etc.>
+Our robot used the following algorithm to try and win the tournament. At the
+start of each loop, it would use the `GET_SLAB` MMIO to get the location of all
+the slabs on the board. It would also keep track of the index of the current
+slab it was trying to push. If the slab it wanted to push was already on the
+opponent's side of the board, it would skip this slab by jumping to the end of
+the loop and incrementing the index of which slab to push. If the slab it wanted
+to push was locked, the robot would try to solve puzzles until it had enough
+energy to unlock the slab. Then it would try to push the unlocked slab to the
+other side of the board.
+
+The movement code for the robot relied on the difference between the coordinates
+of the slab and bot. First, it moves to the left side as much as it can so as
+not to interfere with other slabs and moves to the y-coordinate of the slab to
+push it to the right if it is within the opening. Otherwise, the bot will push
+the block all the way up to the top before pushing it to the right.
+    
+Another optimization that we implemented was to have the bot solve the puzzle
+faster. This was done through optimizing the find_matching_word function to not
+search from the beginning of the word list every time, but to pick back where it
+stopped searching last time. This works because everytime the bot gets more
+feedback, the criteria for which words are valid gets stricter, so if a word
+wasn't valid the first time it was searched it will still be invalid. This sped
+up the total time to search the word list for each puzzle from O(6n) to O(n).
+
+Our team mainly focused on designing something that would qualify first, and
+then optimizing the algorithm. We initially approached the problem with the
+most naive solution, having the bot always push the blocks up and as far to
+the right as possible. However, this was too slow, as the bot spent a lot of
+unnecessary time traversing around. Improving the solving speed of the
+puzzles helped a lot with increasing how frequently we would qualify. In
+addition, having the bot unlock all the slabs ahead of time before pushing
+anything made sure locked slabs did not get in the way of its pathfinding,
+which also improved the consistency.
